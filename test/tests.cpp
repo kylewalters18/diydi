@@ -2,16 +2,23 @@
 
 #include "diydi/diydi.h"
 
+class IName {
+public:
+  virtual std::string name() = 0;
+  virtual ~IName() = default;
+};
+
 class IGreeter {
 public:
   virtual std::string greet() = 0;
   virtual ~IGreeter() = default;
 };
 
-class IName {
+class IDecorativeGreeterFactory {
 public:
-  virtual std::string name() = 0;
-  virtual ~IName() = default;
+  virtual std::shared_ptr<IGreeter> create(std::string prefix,
+                                           std::string suffix) = 0;
+  virtual ~IDecorativeGreeterFactory() = default;
 };
 
 class DefaultGreeter : public IGreeter {
@@ -27,6 +34,20 @@ public:
 
 private:
   std::shared_ptr<IName> name;
+};
+
+class DecorativeGreeter : public IGreeter {
+public:
+  DecorativeGreeter(std::shared_ptr<IName> name,
+                    std::string prefix,
+                    std::string suffix)
+      : name(name), prefix(prefix), suffix(suffix) {}
+  std::string greet() { return prefix + "hello, " + name->name() + suffix; }
+
+private:
+  std::shared_ptr<IName> name;
+  std::string prefix;
+  std::string suffix;
 };
 
 class UniverseName : public IName {
@@ -67,6 +88,24 @@ TEST(DIYDI, test_singleton_scope) {
   container.bind<IName, UniverseName>(diydi::Scope::SINGLETON);
 
   ASSERT_EQ(container.getInstance<IName>(), container.getInstance<IName>());
+}
+
+TEST(DIYDI, test_factory) {
+  diydi::Container container;
+
+  container.bind<IName, UniverseName>();
+  // clang-format off
+  container.bind<IDecorativeGreeterFactory,
+                 diydi::Factory<IDecorativeGreeterFactory>
+                    ::Implements<IGreeter, DecorativeGreeter>
+                    ::Dependencies<IName>
+                    ::Arguments<std::string, std::string>,
+                 IName>();
+  // clang-format on
+
+  std::shared_ptr<IDecorativeGreeterFactory> greeterFactory =
+      container.getInstance<IDecorativeGreeterFactory>();
+  ASSERT_EQ(greeterFactory->create("* ", "!")->greet(), "* hello, universe!");
 }
 
 TEST(DIYDI, test_duplicate_bind_calls) {

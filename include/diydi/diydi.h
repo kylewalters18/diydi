@@ -26,13 +26,45 @@ private:
   std::string msg;
 };
 
+template <typename FactoryInterface>
+class Factory {
+public:
+  template <typename Interface, typename Implementation>
+  class Implements {
+  public:
+    template <typename... Deps>
+    class Dependencies {
+    public:
+      template <typename... Args>
+      class Arguments : public FactoryInterface {
+      public:
+        Arguments(std::shared_ptr<Deps>... deps)
+            : factory([deps...](Args... args) -> std::shared_ptr<Interface> {
+                static_assert(std::is_base_of<Interface, Implementation>::value,
+                              "Implementation must inherit from Interface");
+
+                return std::make_shared<Implementation>(deps..., args...);
+              }) {}
+
+        std::shared_ptr<Interface> create(Args... args) {
+          return factory(args...);
+        }
+
+      private:
+        std::function<std::shared_ptr<Interface>(Args...)> factory;
+      };
+    };
+  };
+};
+
 class Container {
 public:
   Container() {}
   Container(const Container&) = delete;
   Container& operator=(const Container&) = delete;
 
-  template <typename Interface, typename Implementation,
+  template <typename Interface,
+            typename Implementation,
             typename... Dependencies>
   void bind(Scope scope = Scope::DEFAULT) {
     static_assert(std::is_base_of<Interface, Implementation>::value,
@@ -58,7 +90,8 @@ public:
     }
   }
 
-  template <typename Interface> std::shared_ptr<Interface> getInstance() {
+  template <typename Interface>
+  std::shared_ptr<Interface> getInstance() {
     int typeID = getTypeID<Interface>();
 
     if (!bindings.count(typeID)) {
@@ -70,7 +103,8 @@ public:
   }
 
 private:
-  template <typename Interface> int getTypeID() {
+  template <typename Interface>
+  int getTypeID() {
     static int id = typeID()++;
     return id;
   }
