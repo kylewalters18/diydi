@@ -6,7 +6,6 @@
 #include <typeinfo>
 
 namespace diydi {
-enum Scope { DEFAULT, SINGLETON };
 
 class already_bound_error : public std::exception {
 public:
@@ -65,35 +64,25 @@ public:
 
   template <typename Interface,
             typename Implementation,
-            typename... Dependencies>
-  void bind(Scope scope = Scope::DEFAULT) {
-    static_assert(std::is_base_of<Interface, Implementation>::value,
-                  "Implementation must inherit from Interface");
+            typename... Dependencies,
+            typename... Arguments>
+  void bind(Arguments... args) {
+    internalBind<Interface, Implementation, Dependencies...>(Scope::DEFAULT,
+                                                             args...);
+  }
 
-    int typeID = getTypeID<Interface>();
-
-    if (bindings.count(typeID)) {
-      throw already_bound_error(std::string(typeid(Interface).name()) +
-                                std::string(" already bound"));
-    }
-
-    if (scope == Scope::DEFAULT) {
-      bindings[typeID] = [this]() {
-        return std::make_shared<Implementation>(getInstance<Dependencies>()...);
-      };
-    } else if (scope == Scope::SINGLETON) {
-      bindings[typeID] = [this]() {
-        static std::shared_ptr<Implementation> implementation =
-            std::make_shared<Implementation>(getInstance<Dependencies>()...);
-        return implementation;
-      };
-    }
+  template <typename Interface,
+            typename Implementation,
+            typename... Dependencies,
+            typename... Arguments>
+  void bindSingleton(Arguments... args) {
+    internalBind<Interface, Implementation, Dependencies...>(Scope::SINGLETON,
+                                                             args...);
   }
 
   template <typename Interface>
   std::shared_ptr<Interface> getInstance() {
     int typeID = getTypeID<Interface>();
-
     if (!bindings.count(typeID)) {
       throw dependency_resolution_error(std::string(typeid(Interface).name()) +
                                         std::string(" not found"));
@@ -103,6 +92,37 @@ public:
   }
 
 private:
+  enum Scope { DEFAULT, SINGLETON };
+
+  template <typename Interface,
+            typename Implementation,
+            typename... Dependencies,
+            typename... Arguments>
+  void internalBind(Scope scope, Arguments... args) {
+    static_assert(std::is_base_of<Interface, Implementation>::value,
+                  "Implementation must inherit from Interface");
+
+    int typeID = getTypeID<Interface>();
+    if (bindings.count(typeID)) {
+      throw already_bound_error(std::string(typeid(Interface).name()) +
+                                std::string(" already bound"));
+    }
+
+    if (scope == Scope::DEFAULT) {
+      bindings[typeID] = [this, args...]() {
+        return std::make_shared<Implementation>(getInstance<Dependencies>()...,
+                                                args...);
+      };
+    } else if (scope == Scope::SINGLETON) {
+      bindings[typeID] = [this, args...]() {
+        static std::shared_ptr<Implementation> instance =
+            std::make_shared<Implementation>(getInstance<Dependencies>()...,
+                                             args...);
+        return instance;
+      };
+    }
+  }
+
   template <typename Interface>
   int getTypeID() {
     static int id = typeID()++;
@@ -116,4 +136,4 @@ private:
 
   std::map<int, std::function<std::shared_ptr<void>()>> bindings;
 };
-}
+} // namespace diydi

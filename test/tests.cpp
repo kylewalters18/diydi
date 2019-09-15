@@ -27,9 +27,9 @@ public:
   std::string greet() { return "hello, world"; }
 };
 
-class CustomizableGreeter : public IGreeter {
+class GenericGreeter : public IGreeter {
 public:
-  CustomizableGreeter(std::shared_ptr<IName> name) : name(name) {}
+  GenericGreeter(std::shared_ptr<IName> name) : name(name) {}
   std::string greet() { return "hello, " + name->name(); }
 
 private:
@@ -68,7 +68,7 @@ TEST(DIYDI, test_nested_bind_and_get) {
   diydi::Container container;
 
   container.bind<IName, UniverseName>();
-  container.bind<IGreeter, CustomizableGreeter, IName>();
+  container.bind<IGreeter, GenericGreeter, IName>();
 
   std::shared_ptr<IGreeter> instance = container.getInstance<IGreeter>();
   ASSERT_EQ(instance->greet(), "hello, universe");
@@ -85,9 +85,18 @@ TEST(DIYDI, test_default_scope) {
 TEST(DIYDI, test_singleton_scope) {
   diydi::Container container;
 
-  container.bind<IName, UniverseName>(diydi::Scope::SINGLETON);
+  container.bindSingleton<IName, UniverseName>();
 
   ASSERT_EQ(container.getInstance<IName>(), container.getInstance<IName>());
+}
+
+TEST(DIYDI, test_configuration_injection) {
+  diydi::Container container;
+
+  container.bind<IName, UniverseName>();
+  container.bind<IGreeter, DecorativeGreeter, IName>("* ", "!");
+
+  ASSERT_EQ(container.getInstance<IGreeter>()->greet(), "* hello, universe!");
 }
 
 TEST(DIYDI, test_factory) {
@@ -120,7 +129,7 @@ TEST(DIYDI, test_duplicate_bind_calls) {
 TEST(DIYDI, test_invalid_graph) {
   diydi::Container container;
 
-  container.bind<IGreeter, CustomizableGreeter, IName>();
+  container.bind<IGreeter, GenericGreeter, IName>();
 
   ASSERT_THROW(container.getInstance<IGreeter>(),
                diydi::dependency_resolution_error);
