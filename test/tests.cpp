@@ -55,55 +55,55 @@ class UniverseName : public IName {
 };
 
 TEST(DIYDI, test_simple_bind_and_get) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IGreeter, DefaultGreeter>();
+  injector.bind<IGreeter, DefaultGreeter>();
 
-  std::shared_ptr<IGreeter> instance = container.getInstance<IGreeter>();
+  std::shared_ptr<IGreeter> instance = injector.getInstance<IGreeter>();
   ASSERT_EQ(instance->greet(), "hello, world");
 }
 
 TEST(DIYDI, test_nested_bind_and_get) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IName, UniverseName>();
-  container.bind<IGreeter, GenericGreeter, IName>();
+  injector.bind<IName, UniverseName>();
+  injector.bind<IGreeter, GenericGreeter, IName>();
 
-  std::shared_ptr<IGreeter> instance = container.getInstance<IGreeter>();
+  std::shared_ptr<IGreeter> instance = injector.getInstance<IGreeter>();
   ASSERT_EQ(instance->greet(), "hello, universe");
 }
 
 TEST(DIYDI, test_default_scope) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IName, UniverseName>();
+  injector.bind<IName, UniverseName>();
 
-  ASSERT_NE(container.getInstance<IName>(), container.getInstance<IName>());
+  ASSERT_NE(injector.getInstance<IName>(), injector.getInstance<IName>());
 }
 
 TEST(DIYDI, test_singleton_scope) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bindSingleton<IName, UniverseName>();
+  injector.bindSingleton<IName, UniverseName>();
 
-  ASSERT_EQ(container.getInstance<IName>(), container.getInstance<IName>());
+  ASSERT_EQ(injector.getInstance<IName>(), injector.getInstance<IName>());
 }
 
 TEST(DIYDI, test_configuration_injection) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IName, UniverseName>();
-  container.bind<IGreeter, DecorativeGreeter, IName>("* ", "!");
+  injector.bind<IName, UniverseName>();
+  injector.bind<IGreeter, DecorativeGreeter, IName>("* ", "!");
 
-  ASSERT_EQ(container.getInstance<IGreeter>()->greet(), "* hello, universe!");
+  ASSERT_EQ(injector.getInstance<IGreeter>()->greet(), "* hello, universe!");
 }
 
 TEST(DIYDI, test_factory) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IName, UniverseName>();
+  injector.bind<IName, UniverseName>();
   // clang-format off
-  container.bind<IDecorativeGreeterFactory,
+  injector.bind<IDecorativeGreeterFactory,
                  diydi::Factory<IDecorativeGreeterFactory>
                     ::Implements<IGreeter, DecorativeGreeter>
                     ::Dependencies<IName>
@@ -112,24 +112,24 @@ TEST(DIYDI, test_factory) {
   // clang-format on
 
   std::shared_ptr<IDecorativeGreeterFactory> greeterFactory =
-      container.getInstance<IDecorativeGreeterFactory>();
+      injector.getInstance<IDecorativeGreeterFactory>();
   ASSERT_EQ(greeterFactory->create("* ", "!")->greet(), "* hello, universe!");
 }
 
 TEST(DIYDI, test_duplicate_bind_calls) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IName, UniverseName>();
+  injector.bind<IName, UniverseName>();
 
-  ASSERT_THROW((container.bind<IName, UniverseName>()),
+  ASSERT_THROW((injector.bind<IName, UniverseName>()),
                diydi::already_bound_error);
 }
 
 TEST(DIYDI, test_invalid_graph) {
-  diydi::Container container;
+  diydi::Injector injector;
 
-  container.bind<IGreeter, GenericGreeter, IName>();
+  injector.bind<IGreeter, GenericGreeter, IName>();
 
-  ASSERT_THROW(container.getInstance<IGreeter>(),
+  ASSERT_THROW(injector.getInstance<IGreeter>(),
                diydi::dependency_resolution_error);
 }

@@ -56,11 +56,11 @@ class Factory {
   };
 };
 
-class Container {
+class Injector {
  public:
-  Container() {}
-  Container(const Container&) = delete;
-  Container& operator=(const Container&) = delete;
+  Injector() {}
+  Injector(const Injector&) = delete;
+  Injector& operator=(const Injector&) = delete;
 
   template <typename Interface, typename Implementation,
             typename... Dependencies, typename... Arguments>
