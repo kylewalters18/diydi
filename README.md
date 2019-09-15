@@ -68,7 +68,7 @@ A micro framework for dependency injection in C++ loosely inspired by [Guice](ht
 
   Diydi can automate a lot of the boilerplate that comes with writing factory code
   
-  Suppose we have a class that requires a dependency and user provided parameters
+  Suppose we have a class that requires a dependency and caller provided parameters
   
   ```cpp
   class DecorativeGreeter : public IGreeter {
@@ -86,7 +86,7 @@ A micro framework for dependency injection in C++ loosely inspired by [Guice](ht
   };
   ```
   
-  Define an interface with a single create method where the arguments match the user provided parameters
+  Define an interface with a single create method where the arguments match the caller provided parameters
   
   ```cpp
   class IDecorativeGreeterFactory {
@@ -119,7 +119,7 @@ A micro framework for dependency injection in C++ loosely inspired by [Guice](ht
   injector.bind<IGreeter, DecorativeGreeter, IName>("** ", "!");
   ```
 
-### run tests
+### Tests
 
   The examples above came from the tests. You can run them with
 
