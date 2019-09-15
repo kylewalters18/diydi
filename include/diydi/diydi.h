@@ -8,35 +8,35 @@
 namespace diydi {
 
 class already_bound_error : public std::exception {
-public:
+ public:
   already_bound_error(std::string msg) : msg(msg) {}
   const char* what() const throw() { return msg.c_str(); }
 
-private:
+ private:
   std::string msg;
 };
 
 class dependency_resolution_error : public std::exception {
-public:
+ public:
   dependency_resolution_error(std::string msg) : msg(msg) {}
   const char* what() const throw() { return msg.c_str(); }
 
-private:
+ private:
   std::string msg;
 };
 
 template <typename FactoryInterface>
 class Factory {
-public:
+ public:
   template <typename Interface, typename Implementation>
   class Implements {
-  public:
+   public:
     template <typename... Deps>
     class Dependencies {
-    public:
+     public:
       template <typename... Args>
       class Arguments : public FactoryInterface {
-      public:
+       public:
         Arguments(std::shared_ptr<Deps>... deps)
             : factory([deps...](Args... args) -> std::shared_ptr<Interface> {
                 static_assert(std::is_base_of<Interface, Implementation>::value,
@@ -49,7 +49,7 @@ public:
           return factory(args...);
         }
 
-      private:
+       private:
         std::function<std::shared_ptr<Interface>(Args...)> factory;
       };
     };
@@ -57,24 +57,20 @@ public:
 };
 
 class Container {
-public:
+ public:
   Container() {}
   Container(const Container&) = delete;
   Container& operator=(const Container&) = delete;
 
-  template <typename Interface,
-            typename Implementation,
-            typename... Dependencies,
-            typename... Arguments>
+  template <typename Interface, typename Implementation,
+            typename... Dependencies, typename... Arguments>
   void bind(Arguments... args) {
     internalBind<Interface, Implementation, Dependencies...>(Scope::DEFAULT,
                                                              args...);
   }
 
-  template <typename Interface,
-            typename Implementation,
-            typename... Dependencies,
-            typename... Arguments>
+  template <typename Interface, typename Implementation,
+            typename... Dependencies, typename... Arguments>
   void bindSingleton(Arguments... args) {
     internalBind<Interface, Implementation, Dependencies...>(Scope::SINGLETON,
                                                              args...);
@@ -91,13 +87,11 @@ public:
     return std::static_pointer_cast<Interface>(bindings[typeID]());
   }
 
-private:
+ private:
   enum Scope { DEFAULT, SINGLETON };
 
-  template <typename Interface,
-            typename Implementation,
-            typename... Dependencies,
-            typename... Arguments>
+  template <typename Interface, typename Implementation,
+            typename... Dependencies, typename... Arguments>
   void internalBind(Scope scope, Arguments... args) {
     static_assert(std::is_base_of<Interface, Implementation>::value,
                   "Implementation must inherit from Interface");
@@ -136,4 +130,4 @@ private:
 
   std::map<int, std::function<std::shared_ptr<void>()>> bindings;
 };
-} // namespace diydi
+}  // namespace diydi

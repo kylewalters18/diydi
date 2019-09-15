@@ -3,55 +3,54 @@
 #include "diydi/diydi.h"
 
 class IName {
-public:
+ public:
   virtual std::string name() = 0;
   virtual ~IName() = default;
 };
 
 class IGreeter {
-public:
+ public:
   virtual std::string greet() = 0;
   virtual ~IGreeter() = default;
 };
 
 class IDecorativeGreeterFactory {
-public:
+ public:
   virtual std::shared_ptr<IGreeter> create(std::string prefix,
                                            std::string suffix) = 0;
   virtual ~IDecorativeGreeterFactory() = default;
 };
 
 class DefaultGreeter : public IGreeter {
-public:
+ public:
   DefaultGreeter() {}
   std::string greet() { return "hello, world"; }
 };
 
 class GenericGreeter : public IGreeter {
-public:
+ public:
   GenericGreeter(std::shared_ptr<IName> name) : name(name) {}
   std::string greet() { return "hello, " + name->name(); }
 
-private:
+ private:
   std::shared_ptr<IName> name;
 };
 
 class DecorativeGreeter : public IGreeter {
-public:
-  DecorativeGreeter(std::shared_ptr<IName> name,
-                    std::string prefix,
+ public:
+  DecorativeGreeter(std::shared_ptr<IName> name, std::string prefix,
                     std::string suffix)
       : name(name), prefix(prefix), suffix(suffix) {}
   std::string greet() { return prefix + "hello, " + name->name() + suffix; }
 
-private:
+ private:
   std::shared_ptr<IName> name;
   std::string prefix;
   std::string suffix;
 };
 
 class UniverseName : public IName {
-public:
+ public:
   std::string name() { return "universe"; }
 };
 
