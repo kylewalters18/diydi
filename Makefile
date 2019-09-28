@@ -1,4 +1,4 @@
-.PHONY: up ssh build test format gdb
+.PHONY: env run build test format
 
 env:
 	docker build --rm -f "Dockerfile" -t diydi:latest .
