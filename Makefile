@@ -1,8 +1,17 @@
-.PHONY: test format
+.PHONY: up ssh build test format gdb
+
+env:
+	docker build --rm -f "Dockerfile" -t diydi:latest .
+
+run:
+	docker run --rm -it -v $(shell pwd):/diydi diydi:latest $(cmd)
+
+build:
+	mkdir -p build
+	(cd build && cmake .. && make)
 
 test:
-	mkdir -p build/test
-	(cd build/test && cmake ../.. && make -j4 && ./unit_tests --gtest_shuffle)
+	./build/bin/unit_tests --gtest_shuffle
 
 format:
 	find include test -iname *.h -o -iname *.cpp | xargs clang-format -i
