@@ -124,5 +124,11 @@ A micro framework for dependency injection in C++ loosely inspired by [Guice](ht
   The examples above came from the tests. You can run them with
 
   ```sh
-  make test
+  make build test
+  ```
+
+  Or if you prefer using the docker environment 
+
+  ```sh
+  make
   ```
