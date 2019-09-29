@@ -1,4 +1,7 @@
-.PHONY: env run build test format
+.PHONY: all env run build test format
+
+all:
+	make env run cmd="make build test format"
 
 env:
 	docker build --rm -f "Dockerfile" -t diydi:latest .
