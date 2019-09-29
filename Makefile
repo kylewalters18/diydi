@@ -20,8 +20,10 @@ format:
 
 # NOTE: Intended to be run on host machine (requires entr command)
 watch:
-	find include test -iname '*.h' -o -iname '*.cpp' | \
-		entr make run cmd="make .build .test"
+	while sleep 1; do \
+		find include test -iname '*.h' -o -iname '*.cpp' | \
+			entr -cd make run cmd="make .build .test" \
+	; done
 
 
 ###############################################################################
