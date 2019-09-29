@@ -1,8 +1,23 @@
-.PHONY: test format
+.PHONY: all env run build test format
+
+all:
+	make env run cmd="make build test format"
+
+env:
+	docker build --rm -f "Dockerfile" -t diydi:latest .
+
+run:
+	docker run --rm -it -v $(shell pwd):/diydi diydi:latest $(cmd)
+
+build:
+	mkdir -p build
+	(cd build && cmake .. && make)
 
 test:
-	mkdir -p build/test
-	(cd build/test && cmake ../.. && make -j4 && ./unit_tests --gtest_shuffle)
+	./build/bin/unit_tests --gtest_shuffle
 
 format:
-	find include test -iname *.h -o -iname *.cpp | xargs clang-format -i
+	find include test -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
+
+watch:
+	find include test -iname '*.h' -o -iname '*.cpp' | entr make run cmd="make build test"
