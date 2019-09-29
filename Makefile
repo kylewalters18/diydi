@@ -17,4 +17,7 @@ test:
 	./build/bin/unit_tests --gtest_shuffle
 
 format:
-	find include test -iname *.h -o -iname *.cpp | xargs clang-format -i
+	find include test -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
+
+watch:
+	find include test -iname '*.h' -o -iname '*.cpp' | entr make run cmd="make build test"
