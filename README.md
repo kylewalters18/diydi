@@ -161,17 +161,7 @@ A micro framework for dependency injection in C++ loosely inspired by
   dot -T png test.dot -o test.png
   ```
 
-  <img src='https://g.gravizo.com/svg?
-    digraph diydi {
-        "A" -> {"B", "C"};
-        "B" -> {"D", "E"};
-        "C" -> {"F"};
-        "D" -> {"G"};
-        "E" -> {};
-        "F" -> {"G"};
-        "G" -> {};
-    }
-  '/>
+  ![](https://user-images.githubusercontent.com/9455230/66232973-68947f00-e6a7-11e9-9db4-f31bf86bcfae.png)
 
 
 ### Tests
