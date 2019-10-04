@@ -131,7 +131,7 @@ A micro framework for dependency injection in C++ loosely inspired by
 
 ### Graphing
 
-  You can also generate a graph of your application in the dot file format
+  You can generate a graph of your application in the dot file format
 
   ```cpp
   #include "graph.h"
