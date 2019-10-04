@@ -5,6 +5,9 @@
 #include <type_traits>
 #include <typeinfo>
 
+#ifndef DIYDI_DIYDI_H_
+#define DIYDI_DIYDI_H_
+
 namespace diydi {
 
 class already_bound_error : public std::exception {
@@ -131,3 +134,5 @@ class Injector {
   std::map<int, std::function<std::shared_ptr<void>()>> bindings;
 };
 }  // namespace diydi
+
+#endif  // DIYDI_DIYDI_H_
