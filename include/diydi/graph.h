@@ -34,11 +34,11 @@ class Graph {
       buffer << graph[nodeID].concreteType;
       buffer << "\" -> {";
 
-      std::vector<int> adjacencyList = graph[nodeID].adjacencyList;
-      for (size_t i = 0; i < adjacencyList.size(); i++) {
+      std::vector<int> adjacent = graph[nodeID].adjacent;
+      for (size_t i = 0; i < adjacent.size(); i++) {
         buffer << "\"";
-        buffer << graph[adjacencyList[i]].concreteType;
-        buffer << (i == adjacencyList.size() - 1 ? "\"" : "\", ");
+        buffer << graph[adjacent[i]].concreteType;
+        buffer << (i == adjacent.size() - 1 ? "\"" : "\", ");
       }
 
       buffer << "};";

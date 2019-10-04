@@ -60,7 +60,7 @@ class Factory {
 };
 
 struct Node {
-  std::vector<int> adjacencyList;
+  std::vector<int> adjacent;
   std::string interfaceType;
   std::string concreteType;
 };
@@ -114,8 +114,8 @@ class Injector {
     }
 
     graph[getTypeID<Interface>()] = {{getTypeID<Dependencies>()...},
-                                     demangleType<Interface>(),
-                                     demangleType<Implementation>()};
+                                     demangle<Interface>(),
+                                     demangle<Implementation>()};
 
     if (scope == Scope::DEFAULT) {
       bindings[typeID] = [this, args...]() {
@@ -133,7 +133,7 @@ class Injector {
   }
 
   template <typename T>
-  std::string demangleType() {
+  std::string demangle() {
     int status;
     char* demangledType = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
     std::string demangled(demangledType);

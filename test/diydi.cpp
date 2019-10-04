@@ -148,12 +148,12 @@ TEST(DIYDI, test_get_graph) {
     if (entry.second.interfaceType == "IGreeter") {
       ASSERT_EQ(entry.second.interfaceType, "IGreeter");
       ASSERT_EQ(entry.second.concreteType, "GenericGreeter");
-      ASSERT_EQ(entry.second.adjacencyList.size(), 1);
-      ASSERT_EQ(graph[entry.second.adjacencyList[0]].interfaceType, "IName");
+      ASSERT_EQ(entry.second.adjacent.size(), 1);
+      ASSERT_EQ(graph[entry.second.adjacent[0]].interfaceType, "IName");
     } else if (entry.second.interfaceType == "IName") {
       ASSERT_EQ(entry.second.interfaceType, "IName");
       ASSERT_EQ(entry.second.concreteType, "UniverseName");
-      ASSERT_EQ(entry.second.adjacencyList.size(), 0);
+      ASSERT_EQ(entry.second.adjacent.size(), 0);
     } else {
       FAIL();
     }
