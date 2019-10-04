@@ -134,7 +134,7 @@ A micro framework for dependency injection in C++ loosely inspired by
   You can generate a graph of your application in the dot file format
 
   ```cpp
-  #include "graph.h"
+  #include "diydi/graph.h"
 
   Graph graph(injector);
   graph.save("demo.dot");
