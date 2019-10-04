@@ -133,3 +133,29 @@ TEST(DIYDI, test_invalid_graph) {
   ASSERT_THROW(injector.getInstance<IGreeter>(),
                diydi::dependency_resolution_error);
 }
+
+TEST(DIYDI, test_get_graph) {
+  diydi::Injector injector;
+
+  injector.bind<IName, UniverseName>();
+  injector.bind<IGreeter, GenericGreeter, IName>();
+
+  std::map<int, diydi::Node> graph = injector.getGraph();
+
+  ASSERT_EQ(graph.size(), 2);
+
+  for (const auto& entry : graph) {
+    if (entry.second.interfaceType == "IGreeter") {
+      ASSERT_EQ(entry.second.interfaceType, "IGreeter");
+      ASSERT_EQ(entry.second.concreteType, "GenericGreeter");
+      ASSERT_EQ(entry.second.adjacent.size(), 1);
+      ASSERT_EQ(graph[entry.second.adjacent[0]].interfaceType, "IName");
+    } else if (entry.second.interfaceType == "IName") {
+      ASSERT_EQ(entry.second.interfaceType, "IName");
+      ASSERT_EQ(entry.second.concreteType, "UniverseName");
+      ASSERT_EQ(entry.second.adjacent.size(), 0);
+    } else {
+      FAIL();
+    }
+  }
+}

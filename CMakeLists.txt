@@ -10,6 +10,6 @@ add_subdirectory(googletest)
 
 include_directories("include")
 
-add_executable(unit_tests test/tests.cpp)
+add_executable(unit_tests test/diydi.cpp test/graph.cpp)
 
 target_link_libraries(unit_tests gtest gmock gtest_main)

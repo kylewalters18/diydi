@@ -59,6 +59,12 @@ class Factory {
   };
 };
 
+struct Node {
+  std::vector<int> adjacent;
+  std::string interfaceType;
+  std::string concreteType;
+};
+
 class Injector {
  public:
   Injector() {}
@@ -90,6 +96,8 @@ class Injector {
     return std::static_pointer_cast<Interface>(bindings[typeID]());
   }
 
+  std::map<int, Node> getGraph() const { return graph; }
+
  private:
   enum Scope { DEFAULT, SINGLETON };
 
@@ -104,6 +112,10 @@ class Injector {
       throw already_bound_error(std::string(typeid(Interface).name()) +
                                 std::string(" already bound"));
     }
+
+    graph[getTypeID<Interface>()] = {{getTypeID<Dependencies>()...},
+                                     demangle<Interface>(),
+                                     demangle<Implementation>()};
 
     if (scope == Scope::DEFAULT) {
       bindings[typeID] = [this, args...]() {
@@ -120,6 +132,15 @@ class Injector {
     }
   }
 
+  template <typename T>
+  std::string demangle() {
+    int status;
+    char* demangledType = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+    std::string demangled(demangledType);
+    free(demangledType);
+    return demangled;
+  }
+
   template <typename Interface>
   int getTypeID() {
     static int id = typeID()++;
@@ -132,6 +153,7 @@ class Injector {
   }
 
   std::map<int, std::function<std::shared_ptr<void>()>> bindings;
+  std::map<int, Node> graph;
 };
 }  // namespace diydi
 
