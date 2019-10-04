@@ -158,7 +158,7 @@ A micro framework for dependency injection in C++ loosely inspired by
   program to generate a png
 
   ```sh
-  dot -T png test.dot -o test.png
+  dot -T png demo.dot -o demo.png
   ```
 
   ![](https://user-images.githubusercontent.com/9455230/66232973-68947f00-e6a7-11e9-9db4-f31bf86bcfae.png)
