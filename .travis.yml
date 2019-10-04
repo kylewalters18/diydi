@@ -1,9 +1,5 @@
 language: cpp
 
-addons:
-  chocolatey:
-    packages: make
-
 os:
   - linux
   - osx
