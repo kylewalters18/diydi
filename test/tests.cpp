@@ -1,7 +1,6 @@
 #include "gtest/gtest.h"
 
 #include "diydi/diydi.h"
-#include "diydi/graph.h"
 
 class IName {
  public:
