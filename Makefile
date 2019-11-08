@@ -1,41 +1,24 @@
-.PHONY: all env run build test format watch .build .test .format
+.PHONY: all configure build test format watch
 
-all:
-	make env run cmd="make .build .test .format"
+all: configure build test format
 
-env:
-	docker build --rm -f "Dockerfile" -t diydi:latest .
-
-run:
-	docker run --rm -it -v $(shell pwd):/diydi diydi:latest $(cmd)
+configure:
+	mkdir -p build
+	(cd build && cmake ..)
 
 build:
-	make run cmd="make .build"
+	mkdir -p build
+	(cd build && make)
 
 test:
-	make run cmd="make .test"
+	./build/bin/unit_tests --gtest_shuffle
 
 format:
-	make run cmd="make .format"
+	find include test -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
 
 # NOTE: Intended to be run on host machine (requires entr command)
 watch:
 	while sleep 1; do \
 		find include test -iname '*.h' -o -iname '*.cpp' | \
-			entr -cd make run cmd="make .build .test" \
+			entr -cd make build test \
 	; done
-
-
-###############################################################################
-########################### Command implementations ###########################
-###############################################################################
-
-.build:
-	mkdir -p build
-	(cd build && cmake .. && make)
-
-.test:
-	./build/bin/unit_tests --gtest_shuffle
-
-.format:
-	find include test -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
