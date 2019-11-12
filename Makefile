@@ -4,7 +4,7 @@ all: configure build test format
 
 configure:
 	mkdir -p build
-	(cd build && cmake ..)
+	(cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..)
 
 build:
 	mkdir -p build
@@ -16,7 +16,6 @@ test:
 format:
 	find include test -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i
 
-# NOTE: Intended to be run on host machine (requires entr command)
 watch:
 	while sleep 1; do \
 		find include test -iname '*.h' -o -iname '*.cpp' | \

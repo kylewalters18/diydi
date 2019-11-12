@@ -9,16 +9,7 @@
 	// The optional 'runArgs' property can be used to specify additional runtime arguments.
 	"runArgs": [
 		"-v",
-		"${env:HOME}${env:USERPROFILE}/.ssh:/root/.ssh-localhost:ro",
-		// Uncomment the next line to use Docker from inside the container. See https://aka.ms/vscode-remote/samples/docker-in-docker for details.
-		// "-v","/var/run/docker.sock:/var/run/docker.sock",
-		// Uncomment the next line if you will be using a ptrace-based debugger like C++, Go, and Rust.
-		// "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"
-		// You may want to add a non-root user to your Dockerfile. On Linux, this will prevent
-		// new files getting created as root. See https://aka.ms/vscode-remote/containers/non-root-user
-		// for the needed Dockerfile updates and then uncomment the next line.
-		// "-u",
-		// "${env:USER}"
+		"${env:HOME}${env:USERPROFILE}/.ssh:/root/.ssh-localhost:ro"
 	],
 	// Use 'settings' to set *default* container specific settings.json values on container create.
 	// You can edit these settings after create using File > Preferences > Settings > Remote.
@@ -30,8 +21,6 @@
 	},
 	// Uncomment the next line if you want to publish any ports.
 	// "appPort": [],
-	// Uncomment the next line to run commands after the container is created - for example installing git.
-	// "postCreateCommand": "apt-get update && apt-get install -y git",
 	// Add the IDs of extensions you want installed when the container is created in the array below.
 	"extensions": [],
 	"postCreateCommand": "mkdir -p /root/.ssh && cp -r /root/.ssh-localhost/* /root/.ssh && chmod 700 /root/.ssh && chmod 600 /root/.ssh/*"
