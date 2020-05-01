@@ -6,6 +6,7 @@ build
 build_benchmarks
 coverage
 .vscode
+default.profraw
 
 ### C++ ###
 # Prerequisites

@@ -16,8 +16,7 @@ class IGreeter {
 
 class IDecorativeGreeterFactory {
    public:
-    virtual std::shared_ptr<IGreeter> create(std::string prefix,
-                                             std::string suffix) = 0;
+    virtual std::shared_ptr<IGreeter> create(std::string prefix, std::string suffix) = 0;
     virtual ~IDecorativeGreeterFactory() = default;
 };
 
@@ -40,9 +39,7 @@ class DecorativeGreeter : public IGreeter {
    public:
     using Inject = DecorativeGreeter(std::shared_ptr<IName>);
 
-    DecorativeGreeter(std::shared_ptr<IName> name,
-                      std::string prefix,
-                      std::string suffix)
+    DecorativeGreeter(std::shared_ptr<IName> name, std::string prefix, std::string suffix)
         : name(name), prefix(prefix), suffix(suffix) {}
     std::string greet() { return prefix + "hello, " + name->name() + suffix; }
 
@@ -124,8 +121,7 @@ TEST(DIYDI, test_duplicate_bind_calls) {
 
     injector.bind<IName, UniverseName>();
 
-    ASSERT_THROW((injector.bind<IName, UniverseName>()),
-                 diydi::already_bound_error);
+    ASSERT_THROW((injector.bind<IName, UniverseName>()), diydi::already_bound_error);
 }
 
 TEST(DIYDI, test_invalid_graph) {
@@ -133,32 +129,51 @@ TEST(DIYDI, test_invalid_graph) {
 
     injector.bind<IGreeter, GenericGreeter>();
 
-    ASSERT_THROW(injector.getInstance<IGreeter>(),
-                 diydi::dependency_resolution_error);
+    ASSERT_THROW(injector.getInstance<IGreeter>(), diydi::dependency_resolution_error);
 }
 
-TEST(DIYDI, test_get_graph) {
+#define TYPE(if_name, impl_name, ...)          \
+    class if_name {                            \
+       public:                                 \
+        virtual void call() = 0;               \
+        virtual ~if_name() = default;          \
+    };                                         \
+    class impl_name : public if_name {         \
+       public:                                 \
+        using Inject = impl_name(__VA_ARGS__); \
+        impl_name(__VA_ARGS__) {}              \
+        void call() {}                         \
+    };
+
+TYPE(IG, G)
+TYPE(IF, F, std::shared_ptr<IG>)
+TYPE(IE, E)
+TYPE(ID, D, std::shared_ptr<IG>)
+TYPE(IC, C, std::shared_ptr<IF>)
+TYPE(IB, B, std::shared_ptr<ID>, std::shared_ptr<IE>)
+TYPE(IA, A, std::shared_ptr<IB>, std::shared_ptr<IC>)
+
+TEST(DIYDI, test_dot_file) {
     diydi::Injector injector;
 
-    injector.bind<IName, UniverseName>();
-    injector.bind<IGreeter, GenericGreeter>();
+    injector.bind<IA, A>();
+    injector.bind<IB, B>();
+    injector.bind<IC, C>();
+    injector.bind<ID, D>();
+    injector.bind<IE, E>();
+    injector.bind<IF, F>();
+    injector.bind<IG, G>();
 
-    std::map<int, diydi::Node> graph = injector.getGraph();
+    std::string expected = 1 + R"(
+digraph diydi {
+    "A" -> {"B", "C"};
+    "B" -> {"D", "E"};
+    "C" -> {"F"};
+    "D" -> {"G"};
+    "E" -> {};
+    "F" -> {"G"};
+    "G" -> {};
+})";
 
-    ASSERT_EQ(graph.size(), 2);
-
-    for (const auto& entry : graph) {
-        if (entry.second.interfaceType == "IGreeter") {
-            ASSERT_EQ(entry.second.interfaceType, "IGreeter");
-            ASSERT_EQ(entry.second.concreteType, "GenericGreeter");
-            ASSERT_EQ(entry.second.adjacent.size(), 1);
-            ASSERT_EQ(graph[entry.second.adjacent[0]].interfaceType, "IName");
-        } else if (entry.second.interfaceType == "IName") {
-            ASSERT_EQ(entry.second.interfaceType, "IName");
-            ASSERT_EQ(entry.second.concreteType, "UniverseName");
-            ASSERT_EQ(entry.second.adjacent.size(), 0);
-        } else {
-            FAIL();
-        }
-    }
+    ASSERT_EQ(injector.asDotFile(), expected);
 }

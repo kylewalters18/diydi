@@ -19,6 +19,7 @@ RUN apt-get -y update \
     cmake \
     make \
     gdb \
+    pmccabe \
     && apt-get clean
 
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"

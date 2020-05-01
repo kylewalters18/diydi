@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <type_traits>
 #include <typeinfo>
 #include <vector>
@@ -13,10 +14,53 @@
 
 namespace diydi {
 
+/**
+ * Convenience macro used for automatically capturing the constructor
+ * signature of bound types.
+ *
+ * Example usage:
+ *
+ *  class GenericGreeter : public IGreeter {
+ *   public:
+ *      INJECT(GenericGreeter(std::shared_ptr<IName> name)) : name(name) {}
+ *      std::string greet() { return "hello, " + name->name(); }
+ *   private:
+ *      std::shared_ptr<IName> name);
+ *  };
+ */
 #define INJECT(Signature)     \
     using Inject = Signature; \
     Signature
 
+/**
+ * Removes the pointer typing information from a given type, T
+ */
+template <typename T>
+struct remove_ptr;
+
+/**
+ * Specialization of remove_ptr for std::shared_ptr
+ */
+template <typename T>
+struct remove_ptr<std::shared_ptr<T>> {
+    using type = T;
+};
+
+/**
+ * Demangles the typename of T
+ */
+template <typename T>
+static std::string demangle() {
+    int status;
+    char* demangledType = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+    std::string demangled(demangledType);
+    free(demangledType);  // NOLINT(cppcoreguidelines-owning-memory, cppcoreguidelines-no-malloc)
+    return demangled;
+}
+
+/**
+ * Excpetion type to indicate duplicate bind calls to the same interface
+ */
 class already_bound_error : public std::exception {
    public:
     explicit already_bound_error(const std::string& msg) : msg(msg.c_str()) {}
@@ -26,16 +70,30 @@ class already_bound_error : public std::exception {
     const char* msg;
 };
 
+/**
+ * Excpetion type to indicate that a type was required but not bound
+ */
 class dependency_resolution_error : public std::exception {
    public:
-    explicit dependency_resolution_error(const std::string& msg)
-        : msg(msg.c_str()) {}
+    explicit dependency_resolution_error(const std::string& msg) : msg(msg.c_str()) {}
     const char* what() const noexcept override { return msg; }
 
    private:
     const char* msg;
 };
 
+/**
+ * Factories are an extablished pattern for creating objects that require
+ * dependencies and parameterization. This class can automate the boilerplate
+ * required to create factories from simple interfaces.
+ *
+ * Example usage:
+ *
+ *   diydi::Factory<IDecorativeGreeterFactory>
+ *        ::Implements<IGreeter, DecorativeGreeter>
+ *        ::Dependencies<IName>
+ *        ::Arguments<std::string, std::string>>()
+ */
 template <typename FactoryInterface>
 class Factory {
    public:
@@ -51,31 +109,20 @@ class Factory {
                 using Inject = Arguments(std::shared_ptr<Deps>... deps);
 
                 explicit Arguments(std::shared_ptr<Deps>... deps)
-                    : factory([deps...](
-                                  Args... args) -> std::shared_ptr<Interface> {
-                          static_assert(
-                              std::is_base_of<Interface, Implementation>::value,
-                              "Implementation must inherit from Interface");
+                    : factory([deps...](Args... args) -> std::shared_ptr<Interface> {
+                          static_assert(std::is_base_of<Interface, Implementation>::value,
+                                        "Implementation must inherit from Interface");
 
-                          return std::make_shared<Implementation>(deps...,
-                                                                  args...);
+                          return std::make_shared<Implementation>(deps..., args...);
                       }) {}
 
-                std::shared_ptr<Interface> create(Args... args) {
-                    return factory(args...);
-                }
+                std::shared_ptr<Interface> create(Args... args) { return factory(args...); }
 
                private:
                 std::function<std::shared_ptr<Interface>(Args...)> factory;
             };
         };
     };
-};
-
-struct Node {
-    std::vector<int> adjacent;
-    std::string interfaceType;
-    std::string concreteType;
 };
 
 class Injector {
@@ -87,16 +134,12 @@ class Injector {
     Injector(Injector&&) = default;
     Injector& operator=(Injector&&) = default;
 
-    template <typename Interface,
-              typename Implementation,
-              typename... Arguments>
+    template <typename Interface, typename Implementation, typename... Arguments>
     void bind(Arguments... args) {
         internalBind<Interface, Implementation>(Scope::DEFAULT, args...);
     }
 
-    template <typename Interface,
-              typename Implementation,
-              typename... Arguments>
+    template <typename Interface, typename Implementation, typename... Arguments>
     void bindSingleton(Arguments... args) {
         internalBind<Interface, Implementation>(Scope::SINGLETON, args...);
     }
@@ -106,22 +149,43 @@ class Injector {
         int typeID = getTypeID<Interface>();
 
         if (!bindings.count(typeID)) {
-            throw dependency_resolution_error(
-                std::string(typeid(Interface).name()) +
-                std::string(" not found"));
+            throw dependency_resolution_error(std::string(typeid(Interface).name()) +
+                                              std::string(" not found"));
         }
 
         return std::static_pointer_cast<Interface>(bindings.at(typeID)());
     }
 
-    std::map<int, Node> getGraph() const { return graph; }
+    std::string asDotFile() {
+        std::stringstream buffer;
+
+        buffer << "digraph diydi {";
+
+        for (const auto& node : adjacencyList) {
+            int nodeID = node.first;
+
+            buffer << "\n    \"";
+            buffer << adjacencyList[nodeID]->implementation();
+            buffer << "\" -> {";
+
+            std::vector<int> adjacent = adjacencyList[nodeID]->adjacent(*this);
+            for (size_t i = 0; i < adjacent.size(); i++) {
+                buffer << "\"";
+                buffer << adjacencyList[adjacent[i]]->implementation();
+                buffer << (i == adjacent.size() - 1 ? "\"" : "\", ");
+            }
+
+            buffer << "};";
+        }
+        buffer << "\n}";
+
+        return buffer.str();
+    }
 
    private:
     enum Scope { DEFAULT, SINGLETON };
 
-    template <typename Interface,
-              typename Implementation,
-              typename... Arguments>
+    template <typename Interface, typename Implementation, typename... Arguments>
     void internalBind(Scope scope, Arguments... args) {
         static_assert(std::is_base_of<Interface, Implementation>::value,
                       "Implementation must inherit from Interface");
@@ -132,34 +196,17 @@ class Injector {
                                       std::string(" already bound"));
         }
 
-        Constructor<typename Implementation::Inject> constructor(*this);
-
-        graph[getTypeID<Interface>()] = {constructor.adjacent(),
-                                         demangle<Interface>(),
-                                         demangle<Implementation>()};
+        auto node = std::make_shared<Node<Interface, typename Implementation::Inject>>();
+        adjacencyList[getTypeID<Interface>()] = node;
 
         if (scope == Scope::DEFAULT) {
-            bindings[typeID] = [this, constructor, args...]() {
-                return constructor.create(args...);
-            };
+            bindings[typeID] = [this, node, args...]() { return node->create(*this, args...); };
         } else if (scope == Scope::SINGLETON) {
-            bindings[typeID] = [this, constructor, args...]() {
-                static std::shared_ptr<Implementation> instance =
-                    constructor.create(args...);
+            bindings[typeID] = [this, node, args...]() {
+                static std::shared_ptr<Implementation> instance = node->create(*this, args...);
                 return instance;
             };
         }
-    }
-
-    template <typename T>
-    static std::string demangle() {
-        int status;
-        char* demangledType =
-            abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-        std::string demangled(demangledType);
-        free(demangledType);  // NOLINT(cppcoreguidelines-owning-memory,
-                              // cppcoreguidelines-no-malloc)
-        return demangled;
     }
 
     template <typename Interface>
@@ -173,41 +220,36 @@ class Injector {
         return typeID;
     }
 
-    template <typename T>
-    struct Pointer;
-
-    template <typename T>
-    struct Pointer<std::shared_ptr<T>> {
-        using type = T;
+    class INode {
+       public:
+        virtual std::string interface() = 0;
+        virtual std::string implementation() = 0;
+        virtual std::vector<int> adjacent(const Injector& injector) = 0;
     };
 
-    template <typename Signature = void()>
-    class Constructor;
+    template <typename Interface = void, typename Signature = void()>
+    class Node;
 
-    template <typename Return, typename... Dependencies>
-    class Constructor<Return(Dependencies...)> {
+    template <typename Interface, typename Implementation, typename... Dependencies>
+    class Node<Interface, Implementation(Dependencies...)> : public INode {
        public:
-        explicit Constructor(const Injector& injector) : injector(injector) {}
-
         template <typename... Arguments>
-        std::shared_ptr<Return> create(Arguments... arguments) const {
-            return std::make_shared<Return>(
-                injector.getInstance<typename Pointer<Dependencies>::type>()...,
-                arguments...);
+        std::shared_ptr<Implementation> create(const Injector& injector,
+                                               Arguments... arguments) const {
+            return std::make_shared<Implementation>(
+                injector.getInstance<typename remove_ptr<Dependencies>::type>()..., arguments...);
         }
 
-        std::vector<int> adjacent() {
+        std::string interface() override { return demangle<Interface>(); }
+        std::string implementation() override { return demangle<Implementation>(); }
+        std::vector<int> adjacent(const Injector& injector) override {
             return std::vector<int>(
-                {injector
-                     .getTypeID<typename Pointer<Dependencies>::type>()...});
+                {injector.getTypeID<typename remove_ptr<Dependencies>::type>()...});
         }
-
-       private:
-        const Injector& injector;
     };
 
     std::map<int, std::function<std::shared_ptr<void>()>> bindings;
-    std::map<int, Node> graph;
+    std::map<int, std::shared_ptr<INode>> adjacencyList;
 };
 }  // namespace diydi
 

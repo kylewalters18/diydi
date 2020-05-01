@@ -77,7 +77,8 @@ tidy: ##> runs clang-tidy on the code
 
 .PHONY: cyclomatic-complexity
 cyclomatic-complexity: ##> runs a cyclomatic complexity on the code
-	python -m lizard -l cpp include/ -C 10 -L 50 -a 5
+	find include -iname '*.h' -o -iname '*.cpp' | \
+		xargs pmccabe -v
 
 ################################################################################
 #> Dynamic Analysis

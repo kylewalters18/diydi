@@ -15,7 +15,6 @@ include_directories("../include")
 
 add_executable(unit_tests
     diydi.cpp
-    graph.cpp
 )
 
 target_link_libraries(unit_tests gtest gmock gtest_main)
