@@ -13,10 +13,15 @@
 #include <cxxabi.h>
 
 namespace diydi {
+template <typename Annotation, typename Type>
+class Annotated;
+};
 
 /**
  * Convenience macro used for automatically capturing the constructor
  * signature of bound types.
+ *
+ * Thanks to Google's fruit for the following macro tricks https://github.com/google/fruit/
  *
  * Example usage:
  *
@@ -27,22 +32,96 @@ namespace diydi {
  *   private:
  *      std::shared_ptr<IName> name);
  *  };
+ *
+ *  int main() {
+ *      Injector injector
+ *      injector.bind<IGreeter, GenericGreeter>();
+ *      std::shared_ptr<IGreeter> greeter = injector.getInstance<IGreeter>();
+ *  }
  */
-#define INJECT(Signature)     \
-    using Inject = Signature; \
+#define INJECT(Signature)                                              \
+    using Inject = Signature;                                          \
+                                                                       \
+    template <typename Annotation, typename AnnotatedDeclarationParam> \
+    using AnnotatedTypedef = AnnotatedDeclarationParam;                \
+                                                                       \
     Signature
 
 /**
- * Removes the pointer typing information from a given type, T
+ * Convenience macro used for automatically capturing annotated injections
+ *
+ * Example usage:
+ *
+ *  class MultiGreeter : public IGreeter {
+ *   public:
+ *      INJECT(MultiGreeter(ANNOTATED(Universe, std::shared_ptr<IName>) universe,
+ *                          ANNOTATED(Galaxy, std::shared_ptr<IName>) galaxy))
+ *          : universe(universe), galaxy(galaxy) {}
+ *      std::string greet() { return "hello, " + universe->name() + " and " + galaxy->name(); }
+ *
+ *   private:
+ *      std::shared_ptr<IName> universe;
+ *      std::shared_ptr<IName> galaxy;
+ *  };
+ *
+ *  int main() {
+ *      struct Universe {};
+ *      struct Galaxy {};
+ *
+ *      Injector injector
+ *      injector.bind<Annotated<Universe, IName>, UniverseName>();
+ *      injector.bind<Annotated<Galaxy, IName>, GalaxyName>();
+ *      injector.bind<IGreeter, MultiGreeter>();
+ *      std::shared_ptr<IGreeter> greeter = injector.getInstance<IGreeter>();
+ *  }
+ */
+#define ANNOTATED(Annotation, ...) AnnotatedTypedef<Annotation, __VA_ARGS__>
+
+template <typename Annotation, typename T>
+using AnnotatedTypedef = diydi::Annotated<Annotation, T>;
+
+namespace diydi {
+
+template <typename Annotation, typename Type>
+class Annotated : public Type {};
+
+/**
+ * Provides a generic way for getting the bound type from the INJECT
+ * and ANNOTATED API.
  */
 template <typename T>
 struct remove_ptr;
+
+/**
+ * Specialization of remove_ptr for annotations
+ */
+template <typename A, typename T>
+struct remove_ptr<Annotated<A, std::shared_ptr<T>>> {
+    using type = Annotated<A, T>;
+};
 
 /**
  * Specialization of remove_ptr for std::shared_ptr
  */
 template <typename T>
 struct remove_ptr<std::shared_ptr<T>> {
+    using type = T;
+};
+
+/**
+ * Provides a generic way for getting the interface types between default
+ * and annotated injection types.
+ */
+template <typename T>
+struct get_if {
+    using type = T;
+};
+
+/**
+ * Specialization of get_if for annotations
+ */
+template <typename A, typename T>
+struct get_if<Annotated<A, T>> {
     using type = T;
 };
 
@@ -125,6 +204,13 @@ class Factory {
     };
 };
 
+/**
+ * Wiring together objects is a tedious excercise when using dependency
+ * injection. Injector provides a way to automate that by wiring interfaces
+ * to implementations and a method to get an instance of a bound object. It
+ * does this by doing a depth first search traversal in constructing the
+ * object graph.
+ */
 class Injector {
    public:
     Injector() = default;
@@ -134,16 +220,32 @@ class Injector {
     Injector(Injector&&) = default;
     Injector& operator=(Injector&&) = default;
 
+    /**
+     * Binds an interface to an implementation using the default scope of
+     * creating a new object each time an implementation of it is needed.
+     * It optionally takes a list of arguments that will be supplied by the
+     * injector framework.
+     */
     template <typename Interface, typename Implementation, typename... Arguments>
     void bind(Arguments... args) {
         internalBind<Interface, Implementation>(Scope::DEFAULT, args...);
     }
 
+    /**
+     * Binds an interface to an implementation using the singleton scope. This
+     * allows you to reuse the object each time that an implementation is
+     * needed. It optionally takes a list of arguments that will be supplied by
+     * the injector framework.
+     */
     template <typename Interface, typename Implementation, typename... Arguments>
     void bindSingleton(Arguments... args) {
         internalBind<Interface, Implementation>(Scope::SINGLETON, args...);
     }
 
+    /**
+     * Returns an instance of the requested interface. This method builds the
+     * object graph by a depth first search algorithm.
+     */
     template <typename Interface>
     std::shared_ptr<Interface> getInstance() const {
         int typeID = getTypeID<Interface>();
@@ -156,6 +258,12 @@ class Injector {
         return std::static_pointer_cast<Interface>(bindings.at(typeID)());
     }
 
+    /**
+     * Returns a string in the dot file format that represents the graph as an
+     * adjaceny list
+     *
+     * See https://en.wikipedia.org/wiki/DOT_(graph_description_language)
+     */
     std::string asDotFile() {
         std::stringstream buffer;
 
@@ -187,7 +295,7 @@ class Injector {
 
     template <typename Interface, typename Implementation, typename... Arguments>
     void internalBind(Scope scope, Arguments... args) {
-        static_assert(std::is_base_of<Interface, Implementation>::value,
+        static_assert(std::is_base_of<typename get_if<Interface>::type, Implementation>::value,
                       "Implementation must inherit from Interface");
 
         int typeID = getTypeID<Interface>();

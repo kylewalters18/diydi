@@ -35,6 +35,21 @@ class GenericGreeter : public IGreeter {
     std::shared_ptr<IName> name;
 };
 
+struct Universe {};
+struct Galaxy {};
+
+class MultiGreeter : public IGreeter {
+   public:
+    INJECT(MultiGreeter(ANNOTATED(Universe, std::shared_ptr<IName>) universe,
+                        ANNOTATED(Galaxy, std::shared_ptr<IName>) galaxy))
+        : universe(universe), galaxy(galaxy) {}
+    std::string greet() { return "hello, " + universe->name() + " and " + galaxy->name(); }
+
+   private:
+    std::shared_ptr<IName> universe;
+    std::shared_ptr<IName> galaxy;
+};
+
 class DecorativeGreeter : public IGreeter {
    public:
     using Inject = DecorativeGreeter(std::shared_ptr<IName>);
@@ -47,6 +62,12 @@ class DecorativeGreeter : public IGreeter {
     std::shared_ptr<IName> name;
     std::string prefix;
     std::string suffix;
+};
+
+class GalaxyName : public IName {
+   public:
+    INJECT(GalaxyName()) {}
+    std::string name() { return "galaxy"; }
 };
 
 class UniverseName : public IName {
@@ -99,16 +120,26 @@ TEST(DIYDI, test_configuration_injection) {
     ASSERT_EQ(injector.getInstance<IGreeter>()->greet(), "* hello, universe!");
 }
 
+TEST(DIYDI, test_annotated) {
+    diydi::Injector injector;
+
+    injector.bind<diydi::Annotated<Universe, IName>, UniverseName>();
+    injector.bind<diydi::Annotated<Galaxy, IName>, GalaxyName>();
+    injector.bind<IGreeter, MultiGreeter>();
+
+    ASSERT_EQ(injector.getInstance<IGreeter>()->greet(), "hello, universe and galaxy");
+}
+
 TEST(DIYDI, test_factory) {
     diydi::Injector injector;
 
     injector.bind<IName, UniverseName>();
     // clang-format off
-  injector.bind<IDecorativeGreeterFactory,
-                 diydi::Factory<IDecorativeGreeterFactory>
-                    ::Implements<IGreeter, DecorativeGreeter>
-                    ::Dependencies<IName>
-                    ::Arguments<std::string, std::string>>();
+    injector.bind<IDecorativeGreeterFactory,
+                  diydi::Factory<IDecorativeGreeterFactory>
+                       ::Implements<IGreeter, DecorativeGreeter>
+                       ::Dependencies<IName>
+                       ::Arguments<std::string, std::string>>();
     // clang-format on
 
     std::shared_ptr<IDecorativeGreeterFactory> greeterFactory =
@@ -135,23 +166,23 @@ TEST(DIYDI, test_invalid_graph) {
 #define TYPE(if_name, impl_name, ...)          \
     class if_name {                            \
        public:                                 \
-        virtual void call() = 0;               \
         virtual ~if_name() = default;          \
     };                                         \
     class impl_name : public if_name {         \
        public:                                 \
         using Inject = impl_name(__VA_ARGS__); \
         impl_name(__VA_ARGS__) {}              \
-        void call() {}                         \
     };
 
+#define SP(type) std::shared_ptr<type>
+
 TYPE(IG, G)
-TYPE(IF, F, std::shared_ptr<IG>)
+TYPE(IF, F, SP(IG))
 TYPE(IE, E)
-TYPE(ID, D, std::shared_ptr<IG>)
-TYPE(IC, C, std::shared_ptr<IF>)
-TYPE(IB, B, std::shared_ptr<ID>, std::shared_ptr<IE>)
-TYPE(IA, A, std::shared_ptr<IB>, std::shared_ptr<IC>)
+TYPE(ID, D, SP(IG))
+TYPE(IC, C, SP(IF))
+TYPE(IB, B, SP(ID), SP(IE))
+TYPE(IA, A, SP(IB), SP(IC))
 
 TEST(DIYDI, test_dot_file) {
     diydi::Injector injector;
