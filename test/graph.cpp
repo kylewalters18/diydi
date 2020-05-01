@@ -3,47 +3,26 @@
 #include "diydi/diydi.h"
 #include "diydi/graph.h"
 
-class IG {};
-class G : public IG {
-   public:
-    INJECT(G()) {}
-};
+#define TYPE(if_name, impl_name, ...)          \
+    class if_name {                            \
+       public:                                 \
+        virtual void call() = 0;               \
+        virtual ~if_name() = default;          \
+    };                                         \
+    class impl_name : public if_name {         \
+       public:                                 \
+        using Inject = impl_name(__VA_ARGS__); \
+        impl_name(__VA_ARGS__) {}              \
+        void call() {}                         \
+    };
 
-class IF {};
-class F : public IF {
-   public:
-    INJECT(F(std::shared_ptr<IG> g)) {}
-};
-
-class IE {};
-class E : public IE {
-   public:
-    INJECT(E()) {}
-};
-
-class ID {};
-class D : public ID {
-   public:
-    INJECT(D(std::shared_ptr<IG> g)) {}
-};
-
-class IC {};
-class C : public IC {
-   public:
-    INJECT(C(std::shared_ptr<IF> f)) {}
-};
-
-class IB {};
-class B : public IB {
-   public:
-    INJECT(B(std::shared_ptr<ID> d, std::shared_ptr<IE> e)) {}
-};
-
-class IA {};
-class A : public IA {
-   public:
-    INJECT(A(std::shared_ptr<IB> b, std::shared_ptr<IC> c)) {}
-};
+TYPE(IG, G)
+TYPE(IF, F, std::shared_ptr<IG>)
+TYPE(IE, E)
+TYPE(ID, D, std::shared_ptr<IG>)
+TYPE(IC, C, std::shared_ptr<IF>)
+TYPE(IB, B, std::shared_ptr<ID>, std::shared_ptr<IE>)
+TYPE(IA, A, std::shared_ptr<IB>, std::shared_ptr<IC>)
 
 TEST(Graph, test_save) {
     diydi::Injector injector;

@@ -38,6 +38,8 @@ class GenericGreeter : public IGreeter {
 
 class DecorativeGreeter : public IGreeter {
    public:
+    using Inject = DecorativeGreeter(std::shared_ptr<IName>);
+
     DecorativeGreeter(std::shared_ptr<IName> name,
                       std::string prefix,
                       std::string suffix)
@@ -91,14 +93,14 @@ TEST(DIYDI, test_singleton_scope) {
     ASSERT_EQ(injector.getInstance<IName>(), injector.getInstance<IName>());
 }
 
-// TEST(DIYDI, test_configuration_injection) {
-//   diydi::Injector injector;
+TEST(DIYDI, test_configuration_injection) {
+    diydi::Injector injector;
 
-//   injector.bind<IName, UniverseName>();
-//   injector.bind<IGreeter, DecorativeGreeter, IName>("* ", "!");
+    injector.bind<IName, UniverseName>();
+    injector.bind<IGreeter, DecorativeGreeter>("* ", "!");
 
-//   ASSERT_EQ(injector.getInstance<IGreeter>()->greet(), "* hello, universe!");
-// }
+    ASSERT_EQ(injector.getInstance<IGreeter>()->greet(), "* hello, universe!");
+}
 
 TEST(DIYDI, test_factory) {
     diydi::Injector injector;

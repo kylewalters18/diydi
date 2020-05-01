@@ -32,15 +32,10 @@ watch: ##> builds and runs the tests on file save
 #> Build
 ################################################################################
 
-.PHONY: configure
-configure: ##> configures cmake
-	mkdir -p build
-	(cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..)
-
 .PHONY: build
 build: ##> builds the unit tests
 	mkdir -p build
-	(cd build && make)
+	(cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make)
 
 .PHONY: clean
 clean: ##> removes the build files
@@ -83,6 +78,25 @@ tidy: ##> runs clang-tidy on the code
 .PHONY: cyclomatic-complexity
 cyclomatic-complexity: ##> runs a cyclomatic complexity on the code
 	python -m lizard -l cpp include/ -C 10 -L 50 -a 5
+
+################################################################################
+#> Dynamic Analysis
+################################################################################
+
+.PHONY: coverage
+coverage: ##> runs code coverage reporting
+	mkdir -p coverage
+	gcovr -r include/diydi build --print-summary --html --html-details --gcov-executable="llvm-cov gcov" -o coverage/coverage.html
+
+.PHONY: memcheck
+memcheck: ##> runs valgrind memcheck on the unit tests
+	valgrind --error-exitcode=1 build/bin/unit_tests
+
+.PHONY: benchmark
+benchmark: ##> runs benchmarks
+	mkdir -p build_benchmarks
+	(cd build_benchmarks && cmake -DCMAKE_BUILD_TYPE=Release ../benchmarks && make)
+	./build_benchmarks/bin/benchmarks
 
 ################################################################################
 #> Docker

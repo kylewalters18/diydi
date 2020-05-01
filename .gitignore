@@ -3,6 +3,8 @@
 
 ### diydi ###
 build
+build_benchmarks
+coverage
 .vscode
 
 ### C++ ###

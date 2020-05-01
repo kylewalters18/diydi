@@ -28,7 +28,8 @@ class already_bound_error : public std::exception {
 
 class dependency_resolution_error : public std::exception {
    public:
-    explicit dependency_resolution_error(const std::string& msg) : msg(msg.c_str()) {}
+    explicit dependency_resolution_error(const std::string& msg)
+        : msg(msg.c_str()) {}
     const char* what() const noexcept override { return msg; }
 
    private:
