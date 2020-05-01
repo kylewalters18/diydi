@@ -1,8 +1,10 @@
-#include <cxxabi.h>
-#include <fstream>
-
 #ifndef DIYDI_GRAPH_H_
 #define DIYDI_GRAPH_H_
+
+#include <fstream>
+#include <sstream>
+
+#include "diydi/diydi.h"
 
 namespace diydi {
 
@@ -10,9 +12,9 @@ class Injector;
 
 class Graph {
    public:
-    Graph(const Injector& injector) : injector(injector) {}
+    explicit Graph(const Injector& injector) : injector(injector) {}
 
-    void save(std::string filename) {
+    void save(const std::string& filename) {
         std::ofstream outfile(filename);
 
         outfile << generateDotFile();

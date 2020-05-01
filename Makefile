@@ -66,20 +66,19 @@ format: ##> formats the code using clang-format
 
 .PHONY: cppcheck
 cppcheck: ##> runs cppcheck on the code
-	find include test -iname '*.h' -o -iname '*.cpp' | \
+	find include -iname '*.h' -o -iname '*.cpp' | \
 	xargs cppcheck \
-		--enable=all \
+		--enable=warning,style,performance,portability,information,missingInclude \
 		--inconclusive \
 		--inline-suppr \
 		--std=c++11 \
 		--language=c++ \
 		--error-exitcode=1
-		# --verbose
 
 .PHONY: tidy
 tidy: ##> runs clang-tidy on the code
-	find include test -iname '*.h' -o -iname '*.cpp' | \
-		xargs -I{} clang-tidy {} -- -Iinclude -std=c++11
+	find include -iname '*.h' -o -iname '*.cpp' | \
+		xargs -I{} clang-tidy -extra-arg-before=-xc++ {} -- -std=c++11 -Iinclude
 
 .PHONY: cyclomatic-complexity
 cyclomatic-complexity: ##> runs a cyclomatic complexity on the code

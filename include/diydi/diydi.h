@@ -7,6 +7,9 @@
 #include <memory>
 #include <type_traits>
 #include <typeinfo>
+#include <vector>
+
+#include <cxxabi.h>
 
 namespace diydi {
 
@@ -16,20 +19,20 @@ namespace diydi {
 
 class already_bound_error : public std::exception {
    public:
-    explicit already_bound_error(std::string msg) : msg(msg) {}
-    const char* what() const throw() { return msg.c_str(); }
+    explicit already_bound_error(const std::string& msg) : msg(msg.c_str()) {}
+    const char* what() const noexcept override { return msg; }
 
    private:
-    std::string msg;
+    const char* msg;
 };
 
 class dependency_resolution_error : public std::exception {
    public:
-    explicit dependency_resolution_error(std::string msg) : msg(msg) {}
-    const char* what() const throw() { return msg.c_str(); }
+    explicit dependency_resolution_error(const std::string& msg) : msg(msg.c_str()) {}
+    const char* what() const noexcept override { return msg; }
 
    private:
-    std::string msg;
+    const char* msg;
 };
 
 template <typename FactoryInterface>
@@ -44,7 +47,9 @@ class Factory {
             template <typename... Args>
             class Arguments : public FactoryInterface {
                public:
-                  INJECT(Arguments(std::shared_ptr<Deps>... deps))
+                using Inject = Arguments(std::shared_ptr<Deps>... deps);
+
+                explicit Arguments(std::shared_ptr<Deps>... deps)
                     : factory([deps...](
                                   Args... args) -> std::shared_ptr<Interface> {
                           static_assert(
@@ -74,9 +79,12 @@ struct Node {
 
 class Injector {
    public:
-    Injector() {}
+    Injector() = default;
+    ~Injector() = default;
     Injector(const Injector&) = delete;
     Injector& operator=(const Injector&) = delete;
+    Injector(Injector&&) = default;
+    Injector& operator=(Injector&&) = default;
 
     template <typename Interface,
               typename Implementation,
@@ -93,15 +101,16 @@ class Injector {
     }
 
     template <typename Interface>
-    std::shared_ptr<Interface> getInstance() {
+    std::shared_ptr<Interface> getInstance() const {
         int typeID = getTypeID<Interface>();
+
         if (!bindings.count(typeID)) {
             throw dependency_resolution_error(
                 std::string(typeid(Interface).name()) +
                 std::string(" not found"));
         }
 
-        return std::static_pointer_cast<Interface>(bindings[typeID]());
+        return std::static_pointer_cast<Interface>(bindings.at(typeID)());
     }
 
     std::map<int, Node> getGraph() const { return graph; }
@@ -145,19 +154,20 @@ class Injector {
     static std::string demangle() {
         int status;
         char* demangledType =
-            abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+            abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
         std::string demangled(demangledType);
-        free(demangledType);
+        free(demangledType);  // NOLINT(cppcoreguidelines-owning-memory,
+                              // cppcoreguidelines-no-malloc)
         return demangled;
     }
 
     template <typename Interface>
-    int getTypeID() {
+    int getTypeID() const {
         static int id = typeID()++;
         return id;
     }
 
-    int& typeID() {
+    int& typeID() const {
         static int typeID = 0;
         return typeID;
     }
@@ -167,7 +177,7 @@ class Injector {
 
     template <typename T>
     struct Pointer<std::shared_ptr<T>> {
-        typedef T type;
+        using type = T;
     };
 
     template <typename Signature = void()>
@@ -176,7 +186,7 @@ class Injector {
     template <typename Return, typename... Dependencies>
     class Constructor<Return(Dependencies...)> {
        public:
-        explicit Constructor(Injector& injector) : injector(injector) {}
+        explicit Constructor(const Injector& injector) : injector(injector) {}
 
         template <typename... Arguments>
         std::shared_ptr<Return> create(Arguments... arguments) const {
@@ -192,7 +202,7 @@ class Injector {
         }
 
        private:
-        Injector& injector;
+        const Injector& injector;
     };
 
     std::map<int, std::function<std::shared_ptr<void>()>> bindings;
