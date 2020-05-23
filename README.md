@@ -7,55 +7,87 @@ A micro framework for dependency injection in C++ loosely inspired by
 
 ### Bindings
 
-  Bindings are used to configure how the injector will build your graph of objects
+  Bindings are used to configure how the injector will build your graph of
+  objects
 
-  Suppose we have an interface and an implementation of that interface
+  Suppose we have a simple application with two interfaces and implementations
+  for each.
 
   ```cpp
+  class IName {
+   public:
+      virtual std::string name() = 0;
+      virtual ~IName() = default;
+  };
+
   class IGreeter {
    public:
       virtual std::string greet() = 0;
       virtual ~IGreeter() = default;
   };
 
-  class DefaultGreeter : public IGreeter {
+  class WorldName : public IName {
    public:
-      DefaultGreeter() {}
-      std::string greet() { return "hello, world"; }
+      INJECT(WorldName()) = default;
+      std::string name() { return "world"; }
+  };
+
+  class GenericGreeter : public IGreeter {
+   public:
+      // Alternatively, define a typedef that mimics the constructor to use
+      // for injection
+      //
+      // using Inject = GenericGreeter(std::shared_ptr<IName>);
+
+      INJECT(GenericGreeter(std::shared_ptr<IName> name)) : name(name) {}
+      std::string greet() { return "hello, " + name->name(); }
+
+   private:
+      std::shared_ptr<IName> name;
   };
   ```
 
-  Then to wire up DefaultGreeter to IGreeter
+  Then to wire up the implementations to their interfaces
 
   ```cpp
   Injector injector;
-  injector.bind<IGreeter, DefaultGreeter>();
+  injector.bind<IName, WorldName>();
+  injector.bind<IGreeter, GenericGreeter>();
 
   std::shared_ptr<IGreeter> greeter = injector.getInstance<IGreeter>();
   ```
 
-### Dependencies
+### Annotated Injections
 
-  The injector needs to be configured with a list of a concrete class's
-  dependencies in the order they appear in the constructor
+  Suppose we have a class that requires multiple dependencies that implement
+  the same interface. We can use annotated injections to disambiguate the two
 
   ```cpp
-  class GenericGreeter : public IGreeter {
+  struct First {};
+  struct Second {};
+
+  class MultiGreeter : public IGreeter {
    public:
-       GenericGreeter(std::shared_ptr<IName> name) : name(name) {}
-       std::string greet() { return "hello, " + name->name(); }
+      INJECT(MultiGreeter(ANNOTATED(First, std::shared_ptr<IName>) first,
+                          ANNOTATED(Second, std::shared_ptr<IName>) second))
+          : first(first), second(second) {}
+      std::string greet() { return "hello, " + first->name() + " and " + second->name(); }
 
    private:
-       std::shared_ptr<IName> name;
+      std::shared_ptr<IName> first;
+      std::shared_ptr<IName> second;
    };
-   ```
 
-   Then to wire up GenericGreeter to IGreeter
+  int main() {
+      diydi::Injector injector;
 
-   ```cpp
-   Injector injector;
-   injector.bind<IGreeter, GenericGreeter, IName>();
-   ```
+      injector.bind<diydi::Annotated<First, IName>, UniverseName>();
+      injector.bind<diydi::Annotated<Second, IName>, GalaxyName>();
+      injector.bind<IGreeter, MultiGreeter>();
+
+      injector.getInstance<IGreeter>()->greet();
+  }
+  ```
 
 ### Scopes
 
@@ -80,8 +112,7 @@ A micro framework for dependency injection in C++ loosely inspired by
   ```cpp
   class DecorativeGreeter : public IGreeter {
    public:
-      DecorativeGreeter(std::shared_ptr<IName> name, std::string prefix,
-                        std::string suffix)
+      INJECT(DecorativeGreeter(std::shared_ptr<IName> name, std::string prefix, std::string suffix))
           : name(name), prefix(prefix), suffix(suffix) {}
 
       std::string greet() { return prefix + "hello, " + name->name() + suffix; }
@@ -115,8 +146,7 @@ A micro framework for dependency injection in C++ loosely inspired by
                 Factory<IDecorativeGreeterFactory>
                     ::Implements<IGreeter, DecorativeGreeter>
                     ::Dependencies<IName>
-                    ::Arguments<std::string, std::string>,
-                IName>();
+                    ::Arguments<std::string, std::string>>();
   ```
 
 ### Injecting instances
@@ -126,7 +156,7 @@ A micro framework for dependency injection in C++ loosely inspired by
 
   ```cpp
   Injector injector;
-  injector.bind<IGreeter, DecorativeGreeter, IName>("** ", "!");
+  injector.bind<IGreeter, DecorativeGreeter>("** ", "!");
   ```
 
 ### Graphing
@@ -169,10 +199,12 @@ A micro framework for dependency injection in C++ loosely inspired by
   The examples above came from the tests. You can run them natively with
 
   ```sh
-  make .build .test
+  make build test
   ```
 
-  Or if you prefer using the docker environment
+### Development
+
+  A list of commonly used tasks while working on this project can be found by running
 
   ```sh
   make
