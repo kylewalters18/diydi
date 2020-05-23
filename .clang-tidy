@@ -1,0 +1,18 @@
+---
+Checks: '-*,
+         bugprone-*,
+         cert-*,
+         cppcoreguidelines-*,
+         clang-analyzer-*,
+         google-*,
+         misc-*,
+         modernize-*,
+         performance-*,
+         readability-*'
+
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+AnalyzeTemporaryDtors: false
+FormatStyle:     none
+CheckOptions:
+...
